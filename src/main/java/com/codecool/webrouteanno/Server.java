@@ -1,24 +1,24 @@
 package com.codecool.webrouteanno;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.lang.reflect.*;
 
-import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 
 public class Server {
+    private static Map<String, Map<String, Method>> methodFinder = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
+
+        sortMethods(); //fills in methodFinder
+
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
         server.createContext("/", new RouteHandler());
         server.createContext("/test", new RouteHandler());
@@ -33,24 +33,16 @@ public class Server {
         public void handle(HttpExchange httpExchange) throws IOException {
             String requestedPath = httpExchange.getRequestURI().toString();
             String requestedMethod = httpExchange.getRequestMethod();
-            String responseString = "";
-            Class endpClass = Endpoint.class;
 
-            Method[] methods = endpClass.getDeclaredMethods(); // doesn't work with getMethods
-            for (Method method : methods){
-                WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
-
-                if (requestedPath.equals(annotation.path()) && requestedMethod.equals(annotation.method())){
-                    try {
-                        responseString = (String) method.invoke(endpClass.newInstance());
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (InstantiationException e) {
-                        e.printStackTrace();
-                    }
-                }
+            String responseString = null;
+            try {
+                Class endpClass = Endpoint.class;
+                Constructor constructor = endpClass.getConstructor(new Class[]{});
+                Endpoint endpoint = (Endpoint) constructor.newInstance();
+                Method handler = methodFinder.get(requestedPath).get(requestedMethod);
+                responseString = (String) handler.invoke(endpoint);
+            } catch (IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException e) {
+                e.printStackTrace();
             }
             httpExchange.sendResponseHeaders(200, responseString.getBytes().length);
             OutputStream rb = httpExchange.getResponseBody();
@@ -59,6 +51,24 @@ public class Server {
         }
     }
 
-
+    public static void sortMethods(){
+        Class endpClass = Endpoint.class;
+        Method[] methods = endpClass.getDeclaredMethods(); // doesn't work with getMethods
+        for (Method method : methods){
+            WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
+            String path = annotation.path();
+            String reqMethod = annotation.method();
+            Map<String, Method> reqMethodMethod;
+            if (methodFinder.get(path) != null){
+                reqMethodMethod = methodFinder.get(path);
+                reqMethodMethod.put(reqMethod, method);
+            }
+            else {
+                reqMethodMethod = new HashMap<>();
+                reqMethodMethod.put(reqMethod, method);
+            }
+            methodFinder.put(path, reqMethodMethod);
+        }
+    }
 
 }

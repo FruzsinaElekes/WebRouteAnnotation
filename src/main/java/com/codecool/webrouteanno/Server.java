@@ -13,7 +13,7 @@ import com.sun.net.httpserver.HttpServer;
 
 
 public class Server {
-    private static Map<String, Map<String, Method>> methodFinder = new HashMap<>();
+    private static final Map<String, Map<String, Method>> methodFinder = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
 
@@ -23,24 +23,30 @@ public class Server {
         server.createContext("/", new RouteHandler());
         server.createContext("/test", new RouteHandler());
         server.createContext("/profile", new RouteHandler());
-        server.setExecutor(null); // creates a default executor
+        server.setExecutor(null);
         server.start();
     }
 
-    static class RouteHandler implements HttpHandler{
+    private static class RouteHandler implements HttpHandler{
 
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             String requestedPath = httpExchange.getRequestURI().toString();
             String requestedMethod = httpExchange.getRequestMethod();
+            String param = null;
+            if (requestedPath.startsWith("/profile") && !requestedPath.endsWith("/profile")){
+                param = requestedPath.substring(requestedPath.lastIndexOf("/")+1);
+                requestedPath = requestedPath.replaceAll("[\\w]+$", "<s>");
+            }
 
-            String responseString = null;
+            String responseString = "";
             try {
                 Class endpClass = Endpoint.class;
                 Constructor constructor = endpClass.getConstructor(new Class[]{});
                 Endpoint endpoint = (Endpoint) constructor.newInstance();
                 Method handler = methodFinder.get(requestedPath).get(requestedMethod);
-                responseString = (String) handler.invoke(endpoint);
+                if (param != null) responseString = (String) handler.invoke(endpoint, param);
+                else responseString = (String) handler.invoke(endpoint);
             } catch (IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException e) {
                 e.printStackTrace();
             }
@@ -53,7 +59,7 @@ public class Server {
 
     public static void sortMethods(){
         Class endpClass = Endpoint.class;
-        Method[] methods = endpClass.getDeclaredMethods(); // doesn't work with getMethods
+        Method[] methods = endpClass.getDeclaredMethods();
         for (Method method : methods){
             WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
             String path = annotation.path();

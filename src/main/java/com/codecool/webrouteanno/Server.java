@@ -16,8 +16,18 @@ import com.sun.net.httpserver.HttpServer;
 
 public class Server {
     private static final Map<String, Map<String, Method>> methodFinder = new HashMap<>();
+    private static Class endpClass;
+    private static Endpoint endpoint;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException {
+        endpClass = Endpoint.class;
+        try {
+            Constructor constructor = endpClass.getConstructor(new Class[]{});
+            endpoint = (Endpoint) constructor.newInstance();
+        } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
         sortMethods(); //fills in methodFinder
 
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
@@ -39,16 +49,13 @@ public class Server {
 
             String responseString = "";
             try {
-                Class endpClass = Endpoint.class;
-                Constructor constructor = endpClass.getConstructor(new Class[]{});
-                Endpoint endpoint = (Endpoint) constructor.newInstance();
                 Method handler = methodFinder.get(data.getRecomposed()).get(requestedMethod);
                 String[] paramArray = data.getParams();
                 if (paramArray.length > 0) {
                     responseString = (String) handler.invoke(endpoint, new Object[]{paramArray});
                 }
                 else responseString = (String) handler.invoke(endpoint);
-            } catch (IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException e) {
+            } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
             httpExchange.sendResponseHeaders(200, responseString.getBytes().length);
@@ -95,7 +102,6 @@ public class Server {
     }
 
     public static void sortMethods(){
-        Class endpClass = Endpoint.class;
         Method[] methods = endpClass.getDeclaredMethods();
         for (Method method : methods){
             if (method.isAnnotationPresent(WebRoute.class)){

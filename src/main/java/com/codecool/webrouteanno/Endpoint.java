@@ -30,8 +30,8 @@ public class Endpoint {
     public String getProfile(){
         return "this is the profile endpoint";
     }
-    @WebRoute(path="/profile/edit")
-    public String getProfileEdit(){
+    @WebRoute(path="/profile/edit/<s>")
+    public String getProfileEdit(String ... params){
         return "this is the profile edit endpoint";
     }
 

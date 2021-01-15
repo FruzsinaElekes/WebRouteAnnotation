@@ -99,7 +99,7 @@ public class Server {
                 }
                 if (c > counter){
                     counter = c;
-                    recomposed.append(sb.toString());
+                    recomposed = sb;
                 }
             }
             List<String> params = new ArrayList<>();

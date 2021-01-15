@@ -20,7 +20,7 @@ public class Server {
     public static void main(String[] args) throws IOException {
         endpClass = Endpoint.class;
         try {
-            Constructor constructor = endpClass.getConstructor(new Class[]{});
+            Constructor constructor = endpClass.getConstructor();
             endpoint = (Endpoint) constructor.newInstance();
         } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             e.printStackTrace();
@@ -34,7 +34,7 @@ public class Server {
     }
 
     /***
-     * Identifies all paths for which context has to be created
+     * Identifies all paths for which context has to be created (allUrlEndpoints)
      * Fills in methodFinder map (1st key full-path, 2nd key request method)
      */
     public static void analyzeAnnotations(){
@@ -42,18 +42,12 @@ public class Server {
 
         for (Method method : methods){
             if (method.isAnnotationPresent(WebRoute.class)){
-                WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
+                WebRoute annotation = method.getAnnotation(WebRoute.class);
                 String path = annotation.path();
                 String reqMethod = annotation.method();
                 Map<String, Method> reqMethodToMethod;
-                if (methodFinder.get(path) != null){
-                    reqMethodToMethod = methodFinder.get(path);
-                    reqMethodToMethod.put(reqMethod, method);
-                }
-                else {
-                    reqMethodToMethod = new HashMap<>();
-                    reqMethodToMethod.put(reqMethod, method);
-                }
+                reqMethodToMethod = (methodFinder.get(path) != null)? methodFinder.get(path) : new HashMap<>();
+                reqMethodToMethod.put(reqMethod, method);
                 methodFinder.put(path, reqMethodToMethod);
                 allUrlEndpoints.add(path.contains("<s>")
                         ? path.substring(0, path.indexOf("<s>")).replaceAll("/$", "")
@@ -92,7 +86,7 @@ public class Server {
             requestedPath = requestedPath.replaceAll("/$", "");
             String[] URIcomponents = requestedPath.split("/");
             int counter = -1;
-            String recomposed = "";
+            StringBuilder recomposed = new StringBuilder();
             for (String path : methodFinder.keySet()){
                 int c = 0;
                 StringBuilder sb = new StringBuilder();
@@ -100,12 +94,12 @@ public class Server {
                     if (!path.startsWith(sb.toString() + "/" + component)){
                         break;
                     }
-                    sb.append("/" + component);
+                    sb.append("/").append(component);
                     c++;
                 }
                 if (c > counter){
                     counter = c;
-                    recomposed = sb.toString();
+                    recomposed.append(sb.toString());
                 }
             }
             List<String> params = new ArrayList<>();
@@ -113,13 +107,13 @@ public class Server {
             for (int i = counter; i < URIcomponents.length; i++){
                 if (parameter){
                     params.add(URIcomponents[i]);
-                    recomposed += "/<s>";
+                    recomposed.append("/<s>");
                 } else {
-                    recomposed += "/" + URIcomponents[i];
+                    recomposed.append("/").append(URIcomponents[i]);
                 }
                 parameter = !parameter;
             }
-            return new UrlParam(recomposed, params);
+            return new UrlParam(recomposed.toString(), params);
         }
     }
 }

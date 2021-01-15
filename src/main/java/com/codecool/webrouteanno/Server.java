@@ -3,10 +3,7 @@ package com.codecool.webrouteanno;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.lang.reflect.*;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -16,6 +13,7 @@ import com.sun.net.httpserver.HttpServer;
 
 public class Server {
     private static final Map<String, Map<String, Method>> methodFinder = new HashMap<>();
+    private static final Set<String> allUrlEndpoints = new HashSet<>();
     private static Class endpClass;
     private static Endpoint endpoint;
 
@@ -28,15 +26,40 @@ public class Server {
             e.printStackTrace();
         }
 
-        sortMethods(); //fills in methodFinder
-
+        analyzeAnnotations();
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
-        server.createContext("/", new RouteHandler());
-        server.createContext("/test", new RouteHandler());
-        server.createContext("/profile", new RouteHandler());
-        server.createContext("/profile/edit", new RouteHandler());
+        allUrlEndpoints.forEach(url -> server.createContext(url, new RouteHandler()));
         server.setExecutor(null);
         server.start();
+    }
+
+    /***
+     * Identifies all paths for which context has to be created
+     * Fills in methodFinder map (1st key full-path, 2nd key request method)
+     */
+    public static void analyzeAnnotations(){
+        Method[] methods = endpClass.getDeclaredMethods();
+
+        for (Method method : methods){
+            if (method.isAnnotationPresent(WebRoute.class)){
+                WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
+                String path = annotation.path();
+                String reqMethod = annotation.method();
+                Map<String, Method> reqMethodToMethod;
+                if (methodFinder.get(path) != null){
+                    reqMethodToMethod = methodFinder.get(path);
+                    reqMethodToMethod.put(reqMethod, method);
+                }
+                else {
+                    reqMethodToMethod = new HashMap<>();
+                    reqMethodToMethod.put(reqMethod, method);
+                }
+                methodFinder.put(path, reqMethodToMethod);
+                allUrlEndpoints.add(path.contains("<s>")
+                        ? path.substring(0, path.indexOf("<s>")).replaceAll("/$", "")
+                        : path);
+            }
+        }
     }
 
     private static class RouteHandler implements HttpHandler{
@@ -97,28 +120,6 @@ public class Server {
                 parameter = !parameter;
             }
             return new UrlParam(recomposed, params);
-
-        }
-    }
-
-    public static void sortMethods(){
-        Method[] methods = endpClass.getDeclaredMethods();
-        for (Method method : methods){
-            if (method.isAnnotationPresent(WebRoute.class)){
-                WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
-                String path = annotation.path();
-                String reqMethod = annotation.method();
-                Map<String, Method> reqMethodMethod;
-                if (methodFinder.get(path) != null){
-                    reqMethodMethod = methodFinder.get(path);
-                    reqMethodMethod.put(reqMethod, method);
-                }
-                else {
-                    reqMethodMethod = new HashMap<>();
-                    reqMethodMethod.put(reqMethod, method);
-                }
-                methodFinder.put(path, reqMethodMethod);
-            }
         }
     }
 }

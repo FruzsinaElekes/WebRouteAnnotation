@@ -98,19 +98,21 @@ public class Server {
         Class endpClass = Endpoint.class;
         Method[] methods = endpClass.getDeclaredMethods();
         for (Method method : methods){
-            WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
-            String path = annotation.path();
-            String reqMethod = annotation.method();
-            Map<String, Method> reqMethodMethod;
-            if (methodFinder.get(path) != null){
-                reqMethodMethod = methodFinder.get(path);
-                reqMethodMethod.put(reqMethod, method);
+            if (method.isAnnotationPresent(WebRoute.class)){
+                WebRoute annotation = (WebRoute) method.getAnnotation(WebRoute.class);
+                String path = annotation.path();
+                String reqMethod = annotation.method();
+                Map<String, Method> reqMethodMethod;
+                if (methodFinder.get(path) != null){
+                    reqMethodMethod = methodFinder.get(path);
+                    reqMethodMethod.put(reqMethod, method);
+                }
+                else {
+                    reqMethodMethod = new HashMap<>();
+                    reqMethodMethod.put(reqMethod, method);
+                }
+                methodFinder.put(path, reqMethodMethod);
             }
-            else {
-                reqMethodMethod = new HashMap<>();
-                reqMethodMethod.put(reqMethod, method);
-            }
-            methodFinder.put(path, reqMethodMethod);
         }
     }
 }

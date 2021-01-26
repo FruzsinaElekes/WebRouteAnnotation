@@ -1,4 +1,4 @@
-package com.codecool.webrouteanno;
+package com.codecool.webrouteanno.util;
 
 import java.util.List;
 

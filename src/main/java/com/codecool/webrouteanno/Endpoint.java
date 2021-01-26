@@ -1,14 +1,5 @@
 package com.codecool.webrouteanno;
 
-/***
- * Parameters in URL-s have to be marked by <s>
- * The 1st parameter may be preceded by multiple url components
- * All subsequent parameters have to be preceded by a single url component
- * VALID: some/page/<s>/of/<s>  or  some/<s>/page/<s>/edit
- * INVALID: some/<s>/<s>/page   or  <s>/page    or some/<s>/page/edit/<s>
- *
- * Arguments in handler functions of parametrized URL-s are received as varargs
- */
 public class Endpoint {
 
     @WebRoute()
@@ -30,6 +21,7 @@ public class Endpoint {
     public String getProfile(){
         return "this is the profile endpoint";
     }
+
     @WebRoute(path="/profile/edit/<s>")
     public String getProfileEdit(String ... params){
         return "this is the profile edit endpoint";
@@ -42,7 +34,6 @@ public class Endpoint {
 
     @WebRoute(path="/profile/<s>/page/<s>")
     public String getProfileForUserPage(String ... params){
-        System.out.println("in getprofileforuserpage method");
-        return String.format("this is the profile endpoint per page something");
+        return String.format("this is the profile endpoint for %s per page %s", params[0], params[1]);
     }
 }
